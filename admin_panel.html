@@ -1,0 +1,82 @@
+# MDM System - Frontend (Android APK + Web Admin Panel)
+
+### Android APK (Java) - Firebase Integrated
+
+// AndroidManifest.xml (Permissions)
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+// MainActivity.java (Remote Lock)
+package com.example.mdm;
+
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
+import android.content.Context;
+import com.google.firebase.database.*;
+
+public class RemoteLock {
+    private DevicePolicyManager dpm;
+    private ComponentName adminComponent;
+    private DatabaseReference lockRef;
+
+    public RemoteLock(Context context, String deviceId) {
+        dpm = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
+        adminComponent = new ComponentName(context, AdminReceiver.class);
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        lockRef = database.getReference("/lock/" + deviceId);
+
+        lockRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if ("lock".equals(dataSnapshot.child("status").getValue(String.class))) {
+                    dpm.lockNow();
+                    lockRef.setValue(null);
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {}
+        });
+    }
+}
+
+// Web Admin Panel (HTML + CSS + JavaScript)
+
+<!-- index.html (Dashboard) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDM Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+</head>
+<body>
+    <h1>MDM Admin Panel</h1>
+    <button onclick="lockDevice()">Lock Device</button>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        function lockDevice() {
+            const deviceId = prompt("Enter Device ID:");
+            if (deviceId) {
+                firebase.database().ref("/lock/" + deviceId).set({ status: "lock" });
+                alert("Lock command sent!");
+            }
+        }
+    </script>
+</body>
+</html>
